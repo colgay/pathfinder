@@ -52,6 +52,8 @@ void OnPluginsLoaded(void)
 	g_spriteZBeam1 = PRECACHE_MODEL("sprites/zbeam1.spr");
 	g_spriteZBeam4 = PRECACHE_MODEL("sprites/zbeam4.spr");
 	g_spriteArrow = PRECACHE_MODEL("sprites/arrow1.spr");
+
+	s_pathfinder.AssignMap(&s_map);
 }
 
 void OnAmxxAttach(void)
@@ -60,6 +62,14 @@ void OnAmxxAttach(void)
 }
 
 void OnAmxxDetach(void)
+{
+}
+
+void OnServerDeactivate(void)
+{
+}
+
+void OnPluginsUnloaded(void)
 {
 	s_pathfinder.Reset();
 	s_map.Clear();
@@ -257,6 +267,73 @@ void OnClientCommand(edict_t *pEntity)
 			UTIL_ClientPrintAll(HUD_PRINTTALK, UTIL_VarArgs("* Set radius(%.f) for waypoint #%d.\n", radius, num));
 			RETURN_META(MRES_SUPERCEDE);
 		}
+		else if (strcmp(szCmd, "pathfind") == 0)
+		{
+			int num1, num2;
+			num1 = atoi(CMD_ARGV(2));
+			num2 = atoi(CMD_ARGV(3));
+
+			std::shared_ptr<Node> pStart, pGoal;
+			pStart = s_map.GetNodeAt(num1);
+			pGoal = s_map.GetNodeAt(num2);
+
+			if (pStart == nullptr)
+			{
+				UTIL_ClientPrintAll(HUD_PRINTTALK, UTIL_VarArgs("* Cannot find waypoint #%d.\n", num1));
+				RETURN_META(MRES_SUPERCEDE);
+			}
+
+			if (pGoal == nullptr)
+			{
+				UTIL_ClientPrintAll(HUD_PRINTTALK, UTIL_VarArgs("* Cannot find waypoint #%d.\n", num2));
+				RETURN_META(MRES_SUPERCEDE);
+			}
+
+			Path path;
+			if (s_pathfinder.CalcPath(pStart, pGoal, path))
+			{
+				std::shared_ptr<Node> pCurrent, pPrev;
+
+				for (std::vector<std::shared_ptr<Node>>::const_iterator it = path.cbegin(); it != path.cend(); ++it)
+				{
+					pCurrent = *it;
+
+					if (pPrev != nullptr)
+					{
+						MESSAGE_BEGIN(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity);
+						WRITE_BYTE(TE_BEAMPOINTS);
+						WRITE_COORD(pCurrent->GetPosition().x);
+						WRITE_COORD(pCurrent->GetPosition().y);
+						WRITE_COORD(pCurrent->GetPosition().z);
+						WRITE_COORD(pPrev->GetPosition().x);
+						WRITE_COORD(pPrev->GetPosition().y);
+						WRITE_COORD(pPrev->GetPosition().z);
+						WRITE_SHORT(g_spriteZBeam4);
+						WRITE_BYTE(0);		// framerate
+						WRITE_BYTE(0);		// framerate
+						WRITE_BYTE(100);		// life
+						WRITE_BYTE(10);		// width
+						WRITE_BYTE(0);		// noise
+						WRITE_BYTE(0);	// r
+						WRITE_BYTE(100);		// g
+						WRITE_BYTE(200);		// b
+						WRITE_BYTE(255);	// brightness
+						WRITE_BYTE(0);		// speed
+						MESSAGE_END();
+					}
+
+					pPrev = pCurrent;
+				}
+
+				UTIL_ClientPrintAll(HUD_PRINTTALK, UTIL_VarArgs("Path finder successed. (%d)", path.size()));
+			}
+			else
+			{
+				UTIL_ClientPrintAll(HUD_PRINTTALK, "Path finder failed.");
+			}
+
+			RETURN_META(MRES_SUPERCEDE);
+		}
 	}
 
 	RETURN_META(MRES_IGNORED);
@@ -307,7 +384,7 @@ void OnPlayerPreThink(edict_t *pEntity)
 				color[0] = 255;
 				color[1] = color[2] = 0;
 				
-				hudtextparms_t textparms;
+				/*hudtextparms_t textparms;
 				textparms.x = 0.3;
 				textparms.y = 0.25;
 				textparms.fadeinTime = 0.0;
@@ -325,7 +402,74 @@ void OnPlayerPreThink(edict_t *pEntity)
 					s_map.GetNodeIndex(pNode),
 					pNode->GetPosition().x, pNode->GetPosition().y, pNode->GetPosition().z,
 					pNode->GetRadius())
-				);
+				);*/
+
+				pChildren = &pNode->GetChildren();
+
+				for (std::vector<std::shared_ptr<Children>>::const_iterator it2 = pChildren->cbegin(); it2 != pChildren->cend(); ++it2)
+				{
+					pChild = (*it2)->pNode;
+
+					if (pChild->GetChild(pNode) != nullptr)
+					{
+						color[0] = color[1] = 200;
+						color[2] = 0;
+					}
+					else
+					{
+						color[0] = 200;
+						color[1] = 100;
+						color[2] = 0;
+					}
+
+					MESSAGE_BEGIN(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity);
+					WRITE_BYTE(TE_BEAMPOINTS);
+					WRITE_COORD(pNode->GetPosition().x);
+					WRITE_COORD(pNode->GetPosition().y);
+					WRITE_COORD(pNode->GetPosition().z);
+					WRITE_COORD(pChild->GetPosition().x);
+					WRITE_COORD(pChild->GetPosition().y);
+					WRITE_COORD(pChild->GetPosition().z);
+					WRITE_SHORT(g_spriteZBeam1);
+					WRITE_BYTE(0);		// framerate
+					WRITE_BYTE(0);		// framerate
+					WRITE_BYTE(5);		// life
+					WRITE_BYTE(10);		// width
+					WRITE_BYTE(4);		// noise
+					WRITE_BYTE(color[0]);	// r
+					WRITE_BYTE(color[1]);		// g
+					WRITE_BYTE(color[2]);		// b
+					WRITE_BYTE(255);	// brightness
+					WRITE_BYTE(0);		// speed
+					MESSAGE_END();
+				}
+
+				for (std::vector<std::shared_ptr<Node>>::const_iterator it2 = nodes.cbegin(); it2 != nodes.cbegin() + newEnd; ++it2)
+				{
+					if ((*it2)->GetChild(pNode) != nullptr && pNode->GetChild(*it2) == nullptr)
+					{
+						MESSAGE_BEGIN(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity);
+						WRITE_BYTE(TE_BEAMPOINTS);
+						WRITE_COORD(pNode->GetPosition().x);
+						WRITE_COORD(pNode->GetPosition().y);
+						WRITE_COORD(pNode->GetPosition().z);
+						WRITE_COORD((*it2)->GetPosition().x);
+						WRITE_COORD((*it2)->GetPosition().y);
+						WRITE_COORD((*it2)->GetPosition().z);
+						WRITE_SHORT(g_spriteZBeam1);
+						WRITE_BYTE(0);		// framerate
+						WRITE_BYTE(0);		// framerate
+						WRITE_BYTE(5);		// life
+						WRITE_BYTE(10);		// width
+						WRITE_BYTE(4);		// noise
+						WRITE_BYTE(255);	// r
+						WRITE_BYTE(0);		// g
+						WRITE_BYTE(0);		// b
+						WRITE_BYTE(255);	// brightness
+						WRITE_BYTE(0);		// speed
+						MESSAGE_END();
+					}
+				}
 			}
 			else if (pAimNode == pNode)
 			{
@@ -348,7 +492,7 @@ void OnPlayerPreThink(edict_t *pEntity)
 				WRITE_BYTE(200);	// r
 				WRITE_BYTE(200);		// g
 				WRITE_BYTE(200);		// b
-				WRITE_BYTE(200);	// brightness
+				WRITE_BYTE(255);	// brightness
 				WRITE_BYTE(3);		// speed
 				MESSAGE_END();
 			}
@@ -376,49 +520,9 @@ void OnPlayerPreThink(edict_t *pEntity)
 			WRITE_BYTE(color[0]);	// r
 			WRITE_BYTE(color[1]);		// g
 			WRITE_BYTE(color[2]);		// b
-			WRITE_BYTE(200);	// brightness
+			WRITE_BYTE(255);	// brightness
 			WRITE_BYTE(0);		// speed
 			MESSAGE_END();
-
-			pChildren = &pNode->GetChildren();
-
-			for (std::vector<std::shared_ptr<Children>>::const_iterator it_c = pChildren->cbegin(); it_c != pChildren->cend(); ++it_c)
-			{
-				pChild = (*it_c)->pNode;
-
-				if (pChild->GetChild(pNode) != nullptr)
-				{
-					color[0] = color[1] = 200;
-					color[2] = 0;
-				}
-				else
-				{
-					color[0] = 200;
-					color[1] = 50;
-					color[2] = 0;
-				}
-
-				MESSAGE_BEGIN(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity);
-				WRITE_BYTE(TE_BEAMPOINTS);
-				WRITE_COORD(pNode->GetPosition().x);
-				WRITE_COORD(pNode->GetPosition().y);
-				WRITE_COORD(pNode->GetPosition().z);
-				WRITE_COORD(pChild->GetPosition().x);
-				WRITE_COORD(pChild->GetPosition().y);
-				WRITE_COORD(pChild->GetPosition().z);
-				WRITE_SHORT(g_spriteZBeam1);
-				WRITE_BYTE(0);		// framerate
-				WRITE_BYTE(0);		// framerate
-				WRITE_BYTE(5);		// life
-				WRITE_BYTE(10);		// width
-				WRITE_BYTE(3);		// noise
-				WRITE_BYTE(color[0]);	// r
-				WRITE_BYTE(color[1]);		// g
-				WRITE_BYTE(color[2]);		// b
-				WRITE_BYTE(200);	// brightness
-				WRITE_BYTE(0);		// speed
-				MESSAGE_END();
-			}
 		}
 
 		lastUpdateTime = gpGlobals->time;

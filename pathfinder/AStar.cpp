@@ -1,5 +1,6 @@
 #include "extdll.h"
 #include "AStar.h"
+#include "utilities.h"
 
 AStar::AStar()
 {
@@ -53,6 +54,7 @@ const std::shared_ptr<AStarNode> AStar::GetNodeWithLowestF(void) const
 
 	for (std::vector<std::shared_ptr<AStarNode>>::const_iterator it = m_open.cbegin(); it != m_open.cend(); ++it)
 	{
+		pNode = *it;
 		if (pResult == nullptr || pNode->GetF() < pResult->GetF())
 			pResult = pNode;
 	}
@@ -60,22 +62,26 @@ const std::shared_ptr<AStarNode> AStar::GetNodeWithLowestF(void) const
 	return pResult;
 }
 
-bool AStar::CalcPath(std::shared_ptr<Node> pStart, const std::shared_ptr<Node> pGoal, Path &path)
+bool AStar::CalcPath(const std::shared_ptr<Node> pStart, const std::shared_ptr<Node> pGoal, Path &path)
 {
 	Reset();
 
-	std::shared_ptr<AStarNode> pStart2 = std::static_pointer_cast<AStarNode>(pStart);
-	std::shared_ptr<AStarNode> pGoal2 = std::static_pointer_cast<AStarNode>(pGoal);
+	std::shared_ptr<AStarNode> pStart2 = std::dynamic_pointer_cast<AStarNode>(pStart);
+	std::shared_ptr<AStarNode> pGoal2 = std::dynamic_pointer_cast<AStarNode>(pGoal);
+
+	const std::vector<std::shared_ptr<Children>> *children;
+	std::shared_ptr<AStarNode> pCurrent, pChild;
+	std::shared_ptr<Node> pNode;
+	float f, g, h;
 
 	PushOpen(pStart2);
-	
-	float g;
-	std::shared_ptr<AStarNode> pCurrent, pChild;
-	const std::vector<std::shared_ptr<Children>> *children;
 
 	while (!m_open.empty())
 	{
 		pCurrent = GetNodeWithLowestF();
+		PopOpen(pCurrent);
+		PushClosed(pCurrent);
+		UTIL_ClientPrintAll(HUD_PRINTCONSOLE, UTIL_VarArgs("is ... %p ?\n", pCurrent), "", "", "", "");
 
 		if (pCurrent == pGoal2)
 		{
@@ -83,24 +89,28 @@ bool AStar::CalcPath(std::shared_ptr<Node> pStart, const std::shared_ptr<Node> p
 			return true;
 		}
 
-		PopOpen(pCurrent);
-		PushClosed(pCurrent);
-
 		children = &pCurrent->GetChildren();
-
 		for (std::vector<std::shared_ptr<Children>>::const_iterator it = children->cbegin(); it != children->cend(); ++it)
 		{
-			pChild = std::static_pointer_cast<AStarNode>((*it)->pNode);
-
-			g = pChild->GetG() + pCurrent->DistBetween(pChild);
-			if (!pChild->IsOpen())
-				PushOpen(pChild);
-			else if (g >= pChild->GetG())
+			pNode = (*it)->pNode;
+			pChild = std::dynamic_pointer_cast<AStarNode>(pNode);
+			
+			g = pCurrent->GetG() + pCurrent->DistBetween(pChild);
+			if ((pChild->IsOpen() || pChild->IsClosed()) && pChild->GetG() < g)
 				continue;
 
-			pChild->SetParent((*it)->pNode);
+			h = pChild->DistBetween(pGoal2);
+			f = g + h;
+			
+			pChild->SetF(f);
 			pChild->SetG(g);
-			pChild->SetF(g + pChild->DistBetween(pGoal2));
+			pChild->SetH(h);
+			pChild->SetParent(pCurrent);
+
+			if (pChild->IsClosed())
+				pChild->SetClosed(false);
+			if (!pChild->IsOpen())
+				PushOpen(pChild);
 		}
 	}
 
@@ -109,12 +119,12 @@ bool AStar::CalcPath(std::shared_ptr<Node> pStart, const std::shared_ptr<Node> p
 
 void AStar::Reconstruct(std::shared_ptr<AStarNode> pNode, Path &path)
 {
-	std::shared_ptr<AStarNode> pParent = std::static_pointer_cast<AStarNode>(pNode->GetParent());
-	path.push_back(pNode);
+	std::shared_ptr<AStarNode> pParent = pNode->GetParent();
+	path.push_back(std::static_pointer_cast<Node>(pNode));
 
 	while (pParent != nullptr)
 	{
-		path.push_back(pParent);
-		pParent = std::static_pointer_cast<AStarNode>(pNode->GetParent());
+		path.push_back(std::static_pointer_cast<Node>(pParent));
+		pParent = pParent->GetParent();
 	}
 }

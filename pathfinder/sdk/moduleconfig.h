@@ -90,7 +90,7 @@
 //#define FN_AMXX_PLUGINSUNLOADING OnPluginsUnloading
 
 /** All plugins are now unloaded */
-//#define FN_AMXX_PLUGINSUNLOADED OnPluginsUnloaded
+#define FN_AMXX_PLUGINSUNLOADED OnPluginsUnloaded
 
 /**** METAMOD ****/
 // If your module doesn't use metamod, you may close the file now :)
@@ -133,7 +133,7 @@
 #define FN_ClientCommand				OnClientCommand				/* pfnClientCommand()			(wd) Player has sent a command (typed or from a bind) */
 // #define FN_ClientUserInfoChanged		ClientUserInfoChanged		/* pfnClientUserInfoChanged()	(wd) Client has updated their setinfo structure */
 // #define FN_ServerActivate			ServerActivate				/* pfnServerActivate()			(wd) Server is starting a new map */
-// #define FN_ServerDeactivate			ServerDeactivate			/* pfnServerDeactivate()		(wd) Server is leaving the map (shutdown or changelevel); SDK2 */
+#define FN_ServerDeactivate				OnServerDeactivate			/* pfnServerDeactivate()		(wd) Server is leaving the map (shutdown or changelevel); SDK2 */
 #define FN_PlayerPreThink				OnPlayerPreThink				/* pfnPlayerPreThink() */
 // #define FN_PlayerPostThink			PlayerPostThink				/* pfnPlayerPostThink() */
 // #define FN_StartFrame				StartFrame					/* pfnStartFrame() */

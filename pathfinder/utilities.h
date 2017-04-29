@@ -10,7 +10,7 @@ char* UTIL_VarArgs(const char *format, ...);
 
 void UTIL_ClientPrintAll(int msg_dest, const char *msg_name, const char *param1, const char *param2, const char *param3, const char *param4);
 
-void UTIL_HudMessage(edict_t *pEntity, const hudtextparms_t &textparms, const char *pMessage);
+//void UTIL_HudMessage(edict_t *pEntity, const hudtextparms_t &textparms, const char *pMessage);
 
 std::shared_ptr<Node> UTIL_GetAimNode(edict_t *pEntity, float maxDist, Map *pMap);
 

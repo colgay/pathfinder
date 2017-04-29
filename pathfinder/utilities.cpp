@@ -87,27 +87,6 @@ std::shared_ptr<Node> UTIL_GetAimNode(edict_t *pEntity, float maxDist, Map *pMap
 	MAKE_VECTORS(pEntity->v.v_angle);
 	end = start + (gpGlobals->v_forward * 4096);
 
-	MESSAGE_BEGIN(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity);
-	WRITE_BYTE(TE_BEAMPOINTS);
-	WRITE_COORD(start.x);
-	WRITE_COORD(start.y);
-	WRITE_COORD(start.z);
-	WRITE_COORD(end.x);
-	WRITE_COORD(end.y);
-	WRITE_COORD(end.z);
-	WRITE_SHORT(g_spriteZBeam4);
-	WRITE_BYTE(0);		// framerate
-	WRITE_BYTE(0);		// framerate
-	WRITE_BYTE(5);		// life
-	WRITE_BYTE(10);		// width
-	WRITE_BYTE(0);		// noise
-	WRITE_BYTE(255);	// r
-	WRITE_BYTE(0);		// g
-	WRITE_BYTE(0);		// b
-	WRITE_BYTE(200);	// brightness
-	WRITE_BYTE(3);		// speed
-	MESSAGE_END();
-
 	const std::vector<std::shared_ptr<Node>> *pNodes = &pMap->GetNodes();
 	std::shared_ptr<Node> pNode, pResult = nullptr;
 	Vector pos1, pos2;

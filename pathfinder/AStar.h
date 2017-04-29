@@ -9,17 +9,18 @@ public:
 	AStarNode(const Vector &origin, float radius, int flags)
 		: Node(origin, radius, flags)
 	{
-
 	}
 
 	float GetF(void) const { return m_f; }
 	float GetG(void) const { return m_g; }
-	const std::shared_ptr<Node> GetParent(void) const { return m_pParent; }
+	float GetH(void) const { return m_h; }
+	const std::shared_ptr<AStarNode> GetParent(void) const { return m_pParent; }
 	bool IsOpen(void) const { return m_open; }
 	bool IsClosed(void) const { return m_closed; }
 	void SetF(float value) { m_f = value; }
 	void SetG(float value) { m_g = value; }
-	void SetParent(std::shared_ptr<Node> pNode) { m_pParent = pNode; }
+	void SetH(float value) { m_h = value; }
+	void SetParent(std::shared_ptr<AStarNode> pNode) { m_pParent = pNode; }
 	void SetOpen(bool value) { m_open = value; }
 	void SetClosed(bool value) { m_closed = value; }
 
@@ -31,14 +32,14 @@ public:
 	void Reset(void)
 	{
 		m_open = m_closed = false;
-		m_f = m_g;
+		m_f = m_g = m_h = 0;
 		m_pParent = nullptr;
 	}
 
 private:
 	bool m_open, m_closed;
-	float m_f, m_g;
-	std::shared_ptr<Node> m_pParent;
+	float m_f, m_g, m_h;
+	std::shared_ptr<AStarNode> m_pParent;
 };
 
 class AStar : public IPathFinder
